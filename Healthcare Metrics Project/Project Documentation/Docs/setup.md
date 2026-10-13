@@ -138,6 +138,23 @@ Confirm the files landed:
 LIST @healthcare.raw.cms_stage/release=2024-10/;
 ```
 
+Re-running the script is safe: files already in S3 at the same size are skipped.
+
+![Re-run skips files already landed](images/ingestion_rerun_skip_summary.png)
+
+## 11. Create and load the raw tables (Snowflake)
+
+Run each script in Snowsight with **Run All**:
+
+1. `snowflake/02_raw_tables.sql` creates the 20 raw tables from the file headers.
+2. `snowflake/03_load_raw.sql` loads every file and ends with a row-count query.
+
+Compare the row counts with the table in `docs/profiling_findings.md`. Both scripts are safe to re-run, and `03_load_raw.sql` also loads future releases.
+
+## 12. Python version
+
+The project uses Python 3.12 (`brew install python@3.12`). macOS's built-in Python 3.9 is past end of life and produces warnings from the Google libraries. Create the virtual environment with `python3.12 -m venv .venv`.
+
 ## Local profiling environment
 
 ```bash
@@ -158,3 +175,4 @@ Profiling queries are in `profiling/queries.sql`, and results are summarized in 
 | Result view in DuckDB would not exit | Long output opened in a pager | Press `q`. Run `.pager off` to disable |
 | `Provided region_name 'US East (N. Virginia) us-east-1' doesn't match a supported format` | The console's display name was entered as the CLI region | `aws configure set region us-east-1 --profile cms-ingest` |
 | `File format 'CSV_FORMAT' does not exist or not authorized`, then `Object does not exist` | Snowsight's Run button executes only the statement under the cursor, so earlier setup statements never ran | Use **Run All** and fully qualify object names (`healthcare.raw.csv_format`) |
+| `COPY INTO` failed: `Number of columns in file (103) does not match that of the corresponding table (105)` | The raw tables have two load-metadata columns the files don't contain | Set `ERROR_ON_COLUMN_COUNT_MISMATCH = FALSE` on the file format. Safe because columns are matched by name |
