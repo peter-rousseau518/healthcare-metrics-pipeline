@@ -1,0 +1,83 @@
+version: 2
+
+models:
+  - name: stg_nh_provider_info
+    description: >
+      One row per Medicare and Medicaid certified nursing home in the latest
+      CMS Care Compare release. Cleaned, typed, and renamed from
+      raw.nh_provider_info. This is the hub that other facility models join to
+      on ccn.
+    columns:
+      - name: ccn
+        description: "CMS Certification Number: the 6-character facility identifier. Text, because leading zeros are significant."
+        data_tests:
+          - unique
+          - not_null
+      - name: provider_name
+        description: "Facility name as registered with CMS."
+        data_tests:
+          - not_null
+      - name: state
+        description: "Two-letter state or territory code (includes PR and GU)."
+        data_tests:
+          - not_null
+      - name: ownership_type
+        description: "CMS ownership category, e.g. 'For profit - Corporation', 'Non profit - Church related', 'Government - County'."
+      - name: certified_beds
+        description: "Number of Medicare and Medicaid certified beds."
+      - name: phone
+        description: "Facility telephone number. The CMS placeholder 0000001111 is converted to NULL."
+      - name: ssa_county_code
+        description: "Social Security Administration county code. The placeholder 000 is converted to NULL."
+      - name: affiliated_entity_name
+        description: "Parent organization or chain, when the facility has one. NULL for about a third of facilities."
+      - name: overall_rating
+        description: "CMS overall five-star rating (1 = much below average, 5 = much above average). See overall_rating_footnote when NULL."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5]
+                quote: false
+      - name: health_inspection_rating
+        description: "Five-star rating for health inspections."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5]
+                quote: false
+      - name: qm_rating
+        description: "Five-star rating for quality measures."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5]
+                quote: false
+      - name: staffing_rating
+        description: "Five-star rating for staffing."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [1, 2, 3, 4, 5]
+                quote: false
+      - name: reported_total_nurse_hprd
+        description: "Reported total nurse staffing hours per resident per day."
+      - name: total_nursing_turnover_pct
+        description: "Total nursing staff turnover, as reported by CMS."
+      - name: fines_total_usd
+        description: "Total amount of civil money penalties (fines) in dollars."
+      - name: penalties_total_count
+        description: "Total number of penalties (fines plus payment denials)."
+      - name: latitude
+        description: "Facility latitude."
+      - name: longitude
+        description: "Facility longitude."
+      - name: processing_date
+        description: "Date CMS processed this release."
+      - name: release
+        description: "Data release (YYYY-MM), parsed from the S3 path of the source file."
+        data_tests:
+          - not_null
+      - name: source_file
+        description: "S3 path of the file the row was loaded from."
+      - name: loaded_at
+        description: "When the row was loaded into raw."

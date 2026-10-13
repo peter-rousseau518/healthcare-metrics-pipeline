@@ -281,3 +281,38 @@ This log records the significant design decisions in the Healthcare Metrics Pipe
 **Alternatives considered:** A personal login with password and MFA; reusing `SYSADMIN`.
 
 **Consequences:** dbt cannot modify raw data. Runs need no interactive sign-in, so they can later be scheduled. A leaked key could only affect staging and marts, and the key can be rotated by updating `RSA_PUBLIC_KEY`. A custom `generate_schema_name` macro makes dbt write to `healthcare.staging` and `healthcare.marts` exactly, rather than dbt's default prefixed schema names.
+
+---
+
+## ADR-021: Model only the tables the dashboard uses
+
+**Status:** Implemented
+
+**Context:** All 20 source files are loaded into raw. Staging and modeling every one would more than double the transformation work, and many tables (survey dates, COVID files, the QRP files, swing-bed data) don't feed the planned analysis.
+
+**Decision:** Build staging and mart models for 8 tables: provider info, penalties, health citations, citation descriptions, ownership, MDS quality measures, claims quality measures, and SNF VBP facility performance. The other 12 remain in raw, documented as sources and available for future work.
+
+**Alternatives considered:** Staging all 20 tables up front.
+
+**Consequences:** Effort goes to the models that produce the deliverables. Because ingestion and raw loading already cover every file, adding any remaining table later only takes a new staging model.
+
+---
+
+## ADR-022: Staging conventions
+
+**Status:** Implemented
+
+**Context:** Raw columns are all text, with CMS's original names, placeholder values, and footnote codes.
+
+**Decision:** Every staging model follows the same rules:
+- Columns are renamed to snake_case, with shorter names where the CMS header is long (`hprd` for hours per resident per day).
+- Types are cast with Snowflake's `TRY_` functions, so a value that can't be converted becomes NULL instead of failing the build.
+- Y/N flags become booleans.
+- Placeholder values found in profiling become NULL.
+- Footnote columns stay as text codes beside the measures they explain.
+- Each row carries `release`, `source_file`, and `loaded_at` for lineage, and only the latest release is kept.
+- Staging models are views; marts are tables.
+
+**Alternatives considered:** Strict casts (`TO_NUMBER`), which fail the whole build on one bad value; keeping all releases in staging.
+
+**Consequences:** Builds are resilient to unexpected values. That resilience could hide data loss, so key columns carry dbt tests, and a reconciliation check compares non-null counts between raw and staging after each cast.
