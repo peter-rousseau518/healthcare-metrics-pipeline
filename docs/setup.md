@@ -65,7 +65,6 @@ Run `snowflake/00_storage_integration.sql` as `ACCOUNTADMIN`, with `<ROLE_ARN>` 
 
 Open `snowflake-cms-role`, then **Trust relationships → Edit trust policy**. Paste `infrastructure/aws/trust_policy.json` with the two placeholders replaced by the values from step 5.
 
-![Trust policy](images/trust_policy_json.png)
 
 ## 7. Create the warehouse, database, schemas, and stage (Snowflake)
 

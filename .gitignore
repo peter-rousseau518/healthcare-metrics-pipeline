@@ -1,0 +1,27 @@
+# Data: source files and local databases never go in the repo
+*.csv
+*.duckdb
+*.duckdb.wal
+
+# Credentials and secrets
+.env
+*.pem
+*.p8
+credentials.json
+token.json
+client_secret*.json
+.streamlit/secrets.toml
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# dbt
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+
+# macOS
+.DS_Store
+NH_Data_Dictionary.pdf

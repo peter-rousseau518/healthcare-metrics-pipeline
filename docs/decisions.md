@@ -132,7 +132,7 @@ This log records the significant design decisions in the Healthcare Metrics Pipe
 
 ## ADR-010: Batch COPY INTO rather than Snowpipe
 
-**Status:** Planned
+**Status:** Implemented
 
 **Context:** CMS publishes this dataset on a monthly refresh cycle.
 
@@ -146,7 +146,7 @@ This log records the significant design decisions in the Healthcare Metrics Pipe
 
 ## ADR-011: Raw tables store all columns as text, plus load metadata
 
-**Status:** Planned
+**Status:** Implemented
 
 **Context:** Profiling showed placeholder values and inconsistent conventions in the source files.
 
@@ -253,3 +253,17 @@ This log records the significant design decisions in the Healthcare Metrics Pipe
 **Alternatives considered:** One folder per table (more structure, but depends on parsing inconsistent CMS file names); partitioning by run date (mixes up when data was published with when it was copied); comparing checksums against S3 (requires read permission the ingestion user deliberately lacks).
 
 **Consequences:** Re-running the script is safe and only fills gaps. Keeping original file names preserves a direct match to the CMS source. The size check works with the write-only policy because listing is permitted. `--force` re-uploads everything, and bucket versioning keeps the previous copies.
+
+---
+
+## ADR-019: Raw tables generated from file headers, with stable names and append-only loads
+
+**Status:** Implemented
+
+**Context:** There are 20 source files with 10 to 100+ columns each, and file names change every release (`NH_ProviderInfo_Oct2024.csv`, then `..._Nov2024.csv`).
+
+**Decision:** Each raw table's columns are generated from its file's header row with `INFER_SCHEMA`, overriding the inferred types to `VARCHAR`, and keep the original CMS column names exactly. Table names drop the release date (`nh_provider_info`). Each `COPY INTO` uses a pattern that matches its file in any release folder, so the same load script handles every release. Tables are append-only, and Snowflake's load history prevents loading the same file twice.
+
+**Alternatives considered:** Hand-written DDL (error-prone across 20 wide tables); `CREATE OR REPLACE` with each load (would discard prior releases); one table per release (multiplies tables and complicates staging).
+
+**Consequences:** The raw layer exactly matches the source, and adding a release needs no code changes. Staging is responsible for renaming columns and selecting the latest release by `_source_file`. Snowflake retains load history for 64 days, so files are expected to be loaded soon after landing.
