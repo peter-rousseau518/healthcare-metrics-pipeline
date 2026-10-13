@@ -1,0 +1,51 @@
+version: 2
+
+sources:
+  - name: raw
+    description: >
+      CMS Nursing Home Care Compare files exactly as received, loaded by
+      snowflake/03_load_raw.sql. All columns are text with original CMS names,
+      plus _SOURCE_FILE and _LOADED_AT load metadata. Append-only across releases.
+    database: healthcare
+    schema: raw
+    tables:
+      - name: nh_provider_info
+        description: "One row per certified nursing home: location, ownership type, beds, star ratings, inspection and penalty summaries. Hub table; other facility tables join on CCN."
+      - name: nh_ownership
+        description: "Owners and managing parties of each facility; many rows per facility."
+      - name: nh_penalties
+        description: "Civil money penalties and payment denials; many rows per facility."
+      - name: nh_health_citations
+        description: "Health inspection deficiencies; many rows per facility."
+      - name: nh_fire_safety_citations
+        description: "Fire safety inspection deficiencies; many rows per facility."
+      - name: nh_citation_descriptions
+        description: "Lookup of deficiency tags and their descriptions."
+      - name: nh_survey_dates
+        description: "Inspection survey dates by facility and survey type."
+      - name: nh_survey_summary
+        description: "Inspection survey results summarized by facility and rating cycle."
+      - name: nh_quality_measures_mds
+        description: "MDS-based quality measures, long format: one row per facility per measure."
+      - name: nh_quality_measures_claims
+        description: "Claims-based quality measures, long format: one row per facility per measure."
+      - name: nh_state_us_averages
+        description: "State and national averages for facility measures."
+      - name: nh_health_inspection_cutpoints_state
+        description: "State cut points used to assign health inspection star ratings."
+      - name: nh_data_collection_intervals
+        description: "Reporting periods behind each measure in the release."
+      - name: nh_covid_vax_provider
+        description: "COVID-19 vaccination rates for residents and staff, one row per facility."
+      - name: nh_covid_vax_averages
+        description: "State and national COVID-19 vaccination averages."
+      - name: snf_vbp_facility_performance
+        description: "SNF Value-Based Purchasing performance and incentive multiplier, one row per scored facility."
+      - name: snf_vbp_aggregate_performance
+        description: "National SNF VBP summary, single row."
+      - name: snf_qrp_provider
+        description: "SNF Quality Reporting Program measures by provider."
+      - name: snf_qrp_national
+        description: "SNF Quality Reporting Program national values."
+      - name: swing_bed_snf
+        description: "Swing-bed SNF measures for hospitals providing skilled nursing care."

@@ -16,6 +16,8 @@ Find the Snowflake account's region before creating anything in AWS. In a Snowsi
 2. **Permissions** tab: confirm **Block all public access** is on.
 3. **Properties** tab: under **Bucket Versioning**, choose **Edit**, then **Enable**.
 
+![Block public access](images/s3_bucket_block_public_access.png)
+
 Files land under the prefix `cms_nursing_home/`, which S3 creates on first upload.
 
 ## 2. Create the IAM policies
@@ -45,6 +47,8 @@ aws sts get-caller-identity --profile cms-ingest
 ```
 
 The returned ARN should end in `user/cms-ingest`. Delete any downloaded key `.csv` file.
+
+![cms-ingest permissions](images/cms_ingest_user_permissions.png)
 
 ## 4. Create the Snowflake IAM role with a placeholder trust
 
@@ -95,7 +99,11 @@ aws s3 cp test.csv s3://peter-cms-nursing-home-2026/cms_nursing_home/test/test.c
 LIST @healthcare.raw.cms_stage;
 ```
 
-Expected: one row for `test/test.csv`. Afterward, delete the test files in the S3 console with **Show versions** turned on, because versioning keeps deleted files as hidden versions otherwise.
+Expected: one row for `test/test.csv`.
+
+![Snowflake reads the stage](images/snowflake_stage_test_file.png)
+
+ Afterward, delete the test files in the S3 console with **Show versions** turned on, because versioning keeps deleted files as hidden versions otherwise.
 
 ## 9. Set up Google Drive API access (Google Cloud console)
 
@@ -141,6 +149,8 @@ Re-running the script is safe: files already in S3 at the same size are skipped.
 
 ![Re-run skips files already landed](images/ingestion_rerun_skip_summary.png)
 
+![All 20 files visible to Snowflake](images/stage_list_release_2024-10.png)
+
 ## 11. Create and load the raw tables (Snowflake)
 
 Run each script in Snowsight with **Run All**:
@@ -148,11 +158,72 @@ Run each script in Snowsight with **Run All**:
 1. `snowflake/02_raw_tables.sql` creates the 20 raw tables from the file headers.
 2. `snowflake/03_load_raw.sql` loads every file and ends with a row-count query.
 
-Compare the row counts with the table in `docs/profiling_findings.md`. Both scripts are safe to re-run, and `03_load_raw.sql` also loads future releases.
+Compare the row counts with the table in `docs/profiling_findings.md`. All 17 profiled files matched exactly, and the raw layer holds about 2.1 million rows.
+
+![Raw row counts](images/raw_row_counts.png)
+ Both scripts are safe to re-run, and `03_load_raw.sql` also loads future releases.
 
 ## 12. Python version
 
 The project uses Python 3.12 (`brew install python@3.12`). macOS's built-in Python 3.9 is past end of life and produces warnings from the Google libraries. Create the virtual environment with `python3.12 -m venv .venv`.
+
+## 13. Connect the folder to GitHub
+
+The repository is `github.com/peter-rousseau518/healthcare-metrics-pipeline`. With the GitHub CLI signed in (`brew install gh`, then `gh auth login`):
+
+```bash
+git init -b main
+gh auth setup-git
+git remote add origin "$(gh repo view healthcare-metrics-pipeline --json url -q .url).git"
+git fetch origin
+git reset origin/main
+```
+
+A shell shortcut commits and pushes all changes in one step:
+
+```bash
+echo 'gsave() { git add -A && git commit -m "$1" && git push; }' >> ~/.zshrc
+source ~/.zshrc
+gsave "Describe what changed"
+```
+
+## 14. Create dbt's Snowflake access
+
+Generate a key pair for the dbt service user. The private key stays outside the repository:
+
+```bash
+openssl genrsa 2048 | openssl pkcs8 -topk8 -inform PEM -out ~/.config/cms_pipeline/dbt_rsa_key.p8 -nocrypt
+openssl rsa -in ~/.config/cms_pipeline/dbt_rsa_key.p8 -pubout -out ~/.config/cms_pipeline/dbt_rsa_key.pub
+chmod 600 ~/.config/cms_pipeline/dbt_rsa_key.p8
+```
+
+Run `snowflake/04_dbt_access.sql` with **Run All**, after replacing `<PUBLIC_KEY>` with the public key's contents on one line, without the BEGIN and END lines. The last result is the account identifier for the dbt profile.
+
+## 15. Connect dbt
+
+```bash
+pip install -r dbt/requirements.txt
+```
+
+Create `~/.dbt/profiles.yml`, outside the repository:
+
+```yaml
+cms_nursing_home:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: <ORG-ACCOUNT>
+      user: DBT_SVC
+      role: TRANSFORMER
+      private_key_path: /Users/<you>/.config/cms_pipeline/dbt_rsa_key.p8
+      warehouse: CMS_WH
+      database: HEALTHCARE
+      schema: STAGING
+      threads: 4
+```
+
+From the `dbt` folder, `dbt debug` should end with "All checks passed!"
 
 ## Local profiling environment
 

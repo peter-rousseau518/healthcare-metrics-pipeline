@@ -160,7 +160,7 @@ This log records the significant design decisions in the Healthcare Metrics Pipe
 
 ## ADR-012: dbt for transformations
 
-**Status:** Planned
+**Status:** In progress
 
 **Context:** Transformations need to be version-controlled, tested, and documented.
 
@@ -267,3 +267,17 @@ This log records the significant design decisions in the Healthcare Metrics Pipe
 **Alternatives considered:** Hand-written DDL (error-prone across 20 wide tables); `CREATE OR REPLACE` with each load (would discard prior releases); one table per release (multiplies tables and complicates staging).
 
 **Consequences:** The raw layer exactly matches the source, and adding a release needs no code changes. Staging is responsible for renaming columns and selecting the latest release by `_source_file`. Snowflake retains load history for 64 days, so files are expected to be loaded soon after landing.
+
+---
+
+## ADR-020: dbt runs as a dedicated service user with a scoped role
+
+**Status:** Implemented
+
+**Context:** dbt needs Snowflake credentials to build staging and marts. Personal logins require MFA, which interrupts every run, and they carry more privilege than transformations need.
+
+**Decision:** A `TRANSFORMER` role with read-only access to `raw` (including future tables) and create rights in `staging` and `marts`, assigned to a `DBT_SVC` user of `TYPE = SERVICE` that authenticates with an RSA key pair. The private key is stored in `~/.config/cms_pipeline/`, and the connection profile in `~/.dbt/profiles.yml`, both outside the repository. `TRANSFORMER` is granted to `SYSADMIN`, so objects dbt creates stay manageable by the administrator role. Roles and users are created by `SECURITYADMIN`, following Snowflake's separation of administrative duties.
+
+**Alternatives considered:** A personal login with password and MFA; reusing `SYSADMIN`.
+
+**Consequences:** dbt cannot modify raw data. Runs need no interactive sign-in, so they can later be scheduled. A leaked key could only affect staging and marts, and the key can be rotated by updating `RSA_PUBLIC_KEY`. A custom `generate_schema_name` macro makes dbt write to `healthcare.staging` and `healthcare.marts` exactly, rather than dbt's default prefixed schema names.
