@@ -240,6 +240,47 @@ Then run `snowflake/05_pbj_raw.sql` with **Run All**. It should report 1,325,324
 dbt build --select stg_pbj_daily_nurse_staffing
 ```
 
+## 17. Create the dashboard's read-only Snowflake access
+
+Generate a key pair for the dashboard's service user, then build the access script with the public key filled in and copy it to the clipboard:
+
+```bash
+cd ~/Documents/"Healthcare Metrics Project"
+openssl genrsa 2048 | openssl pkcs8 -topk8 -inform PEM -out ~/.config/cms_pipeline/streamlit_rsa_key.p8 -nocrypt
+openssl rsa -in ~/.config/cms_pipeline/streamlit_rsa_key.p8 -pubout -out ~/.config/cms_pipeline/streamlit_rsa_key.pub
+chmod 600 ~/.config/cms_pipeline/streamlit_rsa_key.p8
+KEY=$(grep -v "PUBLIC KEY" ~/.config/cms_pipeline/streamlit_rsa_key.pub | tr -d '\n')
+sed "s|<PUBLIC_KEY>|$KEY|" snowflake/06_dashboard_access.sql | pbcopy
+```
+
+Paste into a Snowsight worksheet and use **Run All**.
+
+## 18. Run the dashboard locally
+
+Credentials live in `~/.streamlit/secrets.toml`, outside the repository:
+
+```bash
+ACCOUNT='<ORG-ACCOUNT>'
+mkdir -p ~/.streamlit
+cat > ~/.streamlit/secrets.toml << EOF
+[snowflake]
+account = "${ACCOUNT}"
+user = "STREAMLIT_SVC"
+role = "DASHBOARD_READER"
+warehouse = "CMS_WH"
+database = "HEALTHCARE"
+schema = "MARTS"
+private_key = """$(cat ~/.config/cms_pipeline/streamlit_rsa_key.p8)"""
+EOF
+chmod 600 ~/.streamlit/secrets.toml
+pip install -r dashboard/requirements.txt
+streamlit run dashboard/app.py
+```
+
+## 19. Deploy to Streamlit Community Cloud
+
+At share.streamlit.io, sign in with GitHub and create an app from `peter-rousseau518/healthcare-metrics-pipeline`, branch `main`, main file `dashboard/app.py`. Under **Advanced settings**, choose Python 3.12 and paste the contents of `~/.streamlit/secrets.toml` into **Secrets**.
+
 ## Local profiling environment
 
 ```bash

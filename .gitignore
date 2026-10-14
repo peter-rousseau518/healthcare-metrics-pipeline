@@ -10,7 +10,8 @@
 credentials.json
 token.json
 client_secret*.json
-.streamlit/secrets.toml
+**/.streamlit/secrets.toml
+secrets.toml
 
 # Python
 .venv/
@@ -24,4 +25,3 @@ dbt/logs/
 
 # macOS
 .DS_Store
-NH_Data_Dictionary.pdf

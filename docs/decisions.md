@@ -188,7 +188,7 @@ This log records the significant design decisions in the Healthcare Metrics Pipe
 
 ## ADR-014: Streamlit on Community Cloud for the dashboard
 
-**Status:** Planned
+**Status:** In progress
 
 **Context:** The dashboard must be viewable by reviewers who have no Snowflake account.
 
@@ -202,7 +202,7 @@ This log records the significant design decisions in the Healthcare Metrics Pipe
 
 ## ADR-015: Dashboard connects with a read-only service identity
 
-**Status:** Planned
+**Status:** In progress
 
 **Context:** The deployed app needs Snowflake credentials.
 
