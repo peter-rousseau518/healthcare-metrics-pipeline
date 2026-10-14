@@ -126,7 +126,7 @@ renamed as (
         try_to_date("Processing Date")                                                                 as processing_date,
 
         -- lineage
-        regexp_substr(_source_file, 'release=([0-9]{4}-[0-9]{2})', 1, 1, 'e', 1) as release,
+        {{ release_from_source_file() }}                                                 as release,
         _source_file                                                              as source_file,
         _loaded_at                                                                as loaded_at
 

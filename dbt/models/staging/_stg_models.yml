@@ -1,0 +1,159 @@
+version: 2
+
+models:
+  - name: stg_nh_citation_descriptions
+    description: "Lookup of CMS deficiency tags with description and category. One row per tag."
+    columns:
+      - name: deficiency_tag_key
+        description: "Prefix plus zero-padded tag number (e.g. F0880). Join key from citations."
+        data_tests:
+          - unique
+          - not_null
+      - name: deficiency_category
+        description: "CMS grouping of the deficiency, e.g. infection control, resident rights."
+
+  - name: stg_nh_health_citations
+    description: "Health inspection deficiencies cited at each facility. One row per citation."
+    columns:
+      - name: ccn
+        description: "Facility identifier; joins to stg_nh_provider_info."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_nh_provider_info')
+                field: ccn
+      - name: survey_date
+        description: "Date of the inspection that produced the citation."
+        data_tests:
+          - not_null
+      - name: deficiency_tag_key
+        description: "Joins to stg_nh_citation_descriptions."
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('stg_nh_citation_descriptions')
+                field: deficiency_tag_key
+              config:
+                severity: warn
+      - name: scope_severity_code
+        description: "CMS scope and severity grid letter, A (least serious) through L (most serious)."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L']
+              config:
+                severity: warn
+      - name: is_complaint_deficiency
+        description: "True when the citation came from a complaint investigation."
+      - name: is_infection_control_deficiency
+        description: "True when the citation came from an infection control inspection."
+
+  - name: stg_nh_ownership
+    description: "Owners and managing parties of each facility. Many rows per facility."
+    columns:
+      - name: ccn
+        description: "Facility identifier; joins to stg_nh_provider_info."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_nh_provider_info')
+                field: ccn
+      - name: owner_role
+        description: "The party's role, e.g. direct or indirect ownership interest, managing employee, operational control."
+      - name: owner_type
+        description: "Individual or organization."
+      - name: ownership_percentage
+        description: "Ownership share as a number when CMS reports one; see ownership_percentage_text otherwise."
+      - name: association_date
+        description: "Date the party became associated with the facility."
+
+  - name: stg_nh_penalties
+    description: "Fines and payment denials imposed on facilities. Many rows per facility."
+    columns:
+      - name: ccn
+        description: "Facility identifier; joins to stg_nh_provider_info."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_nh_provider_info')
+                field: ccn
+      - name: penalty_date
+        description: "Date the penalty was imposed."
+        data_tests:
+          - not_null
+      - name: penalty_type
+        description: "Fine or payment denial."
+        data_tests:
+          - not_null
+      - name: fine_amount_usd
+        description: "Fine amount in dollars. NULL for payment denials."
+      - name: payment_denial_days
+        description: "Length of a payment denial in days. NULL for fines."
+
+  - name: stg_nh_quality_measures_claims
+    description: "Claims-based quality measures. One row per facility per measure."
+    columns:
+      - name: facility_measure_key
+        description: "ccn plus measure_code; the grain of this model."
+        data_tests:
+          - unique
+          - not_null
+      - name: ccn
+        description: "Facility identifier; joins to stg_nh_provider_info."
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('stg_nh_provider_info')
+                field: ccn
+              config:
+                severity: warn
+      - name: adjusted_score
+        description: "Risk-adjusted measure score."
+      - name: is_used_in_five_star
+        description: "True when the measure feeds the quality measure star rating."
+
+  - name: stg_nh_quality_measures_mds
+    description: "MDS-based quality measures with quarterly scores. One row per facility per measure."
+    columns:
+      - name: facility_measure_key
+        description: "ccn plus measure_code; the grain of this model."
+        data_tests:
+          - unique
+          - not_null
+      - name: ccn
+        description: "Facility identifier; joins to stg_nh_provider_info."
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('stg_nh_provider_info')
+                field: ccn
+              config:
+                severity: warn
+      - name: four_quarter_avg_score
+        description: "Average of the four quarterly scores."
+      - name: is_used_in_five_star
+        description: "True when the measure feeds the quality measure star rating."
+
+  - name: stg_snf_vbp_facility_performance
+    description: >
+      SNF Value-Based Purchasing results. One row per scored facility. Baseline
+      and performance periods are FY 2019 and FY 2022 in this release.
+    columns:
+      - name: ccn
+        description: "Facility identifier. About 170 scored facilities are absent from the current provider list (see profiling findings)."
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_nh_provider_info')
+                field: ccn
+              config:
+                severity: warn
+      - name: performance_score
+        description: "VBP performance score, the higher of achievement and improvement scores."
+      - name: incentive_payment_multiplier
+        description: "Multiplier applied to the facility's Medicare payments under VBP."
