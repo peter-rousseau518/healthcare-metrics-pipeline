@@ -98,6 +98,11 @@ The 170 unmatched VBP facilities (about 1.6% of the VBP file) are consistent wit
 
 Certified beds range from 4 to 843. Total fines per facility range from $0 to $1,133,449.85. All rows carry the same processing date, 2024-10-01, which confirms a single, consistent release.
 
+## Added later
+
+- **Swing-bed SNF file** (38,064 rows) and the two **SNF Quality Reporting Program** files (711,072 and 24 rows) loaded to raw; not profiled or modeled (ADR-021).
+- **PBJ daily nurse staffing, Q2 2024** (1,325,324 rows): 17 facilities (1,547 facility-days) have no match in the October 2024 provider list, consistent with closures after June 2024 (ADR-023).
+
 ## Open items
 
 - Profile the remaining facility tables in depth (citations, quality measures, ownership).

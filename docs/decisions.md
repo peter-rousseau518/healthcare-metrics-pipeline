@@ -188,7 +188,7 @@ This log records the significant design decisions in the Healthcare Metrics Pipe
 
 ## ADR-014: Streamlit on Community Cloud for the dashboard
 
-**Status:** In progress
+**Status:** Implemented: https://nursing-home-staffing.streamlit.app/
 
 **Context:** The dashboard must be viewable by reviewers who have no Snowflake account.
 
@@ -202,11 +202,11 @@ This log records the significant design decisions in the Healthcare Metrics Pipe
 
 ## ADR-015: Dashboard connects with a read-only service identity
 
-**Status:** In progress
+**Status:** Implemented
 
 **Context:** The deployed app needs Snowflake credentials.
 
-**Decision:** A dedicated `TYPE = SERVICE` user with key-pair authentication, and a role with `SELECT` on the `marts` schema only. Credentials are stored in Streamlit secrets, and query results are cached with `st.cache_data`.
+**Decision:** A dedicated `TYPE = SERVICE` user (`STREAMLIT_SVC`) with key-pair authentication, and a role (`DASHBOARD_READER`) with `SELECT` on the `marts` schema only, including future tables so access survives dbt rebuilds. Credentials are stored in Streamlit secrets, and query results are cached with `st.cache_data`.
 
 **Alternatives considered:** Using a personal login; password authentication.
 
