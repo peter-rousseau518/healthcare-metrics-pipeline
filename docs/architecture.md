@@ -92,7 +92,7 @@ Tables built around the dashboard questions (ADR-024):
 
 ## 6. Serving (Streamlit)
 
-`dashboard/app.py` reads only the marts, through the `STREAMLIT_SVC` service user and the `DASHBOARD_READER` role. Query results are cached for 24 hours, so page views don't keep the warehouse running. Credentials live in Streamlit Cloud's secrets store, never in the repository (ADR-014, 015).
+`dashboard/app.py` has seven tabs (staffing vs. occupancy, nurse hours, agency nurse hours, strain vs. turnover, staffing by state and type, short- vs. long-stay trends, daily trends) and reads only the marts, through the `STREAMLIT_SVC` service user and the `DASHBOARD_READER` role. Query results are cached for 24 hours, so page views don't keep the warehouse running. Credentials live in Streamlit Cloud's secrets store, never in the repository (ADR-014, 015).
 
 ## Security model
 

@@ -125,13 +125,25 @@ st.caption(
     "Staffing is measured in hours per resident day (HPRD): total nurse hours ÷ total resident-days."
 )
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab_hours, tab2, tab_turnover, tab3, tab4, tab5 = st.tabs([
     "Staffing vs. occupancy",
+    "Nurse hours",
     "Agency nurse hours",
+    "Strain vs. turnover",
     "Staffing by state & type",
     "Short- vs. long-stay trends",
     "Daily trends",
 ])
+
+PBJ_SOURCE = f"Source: CMS Payroll-Based Journal daily nurse staffing, {quarter}."
+
+# Weekly hours per facility, from PBJ: HPRD x average daily census x 7
+f = f.assign(
+    rn_hours_per_week=f["rn_hprd"] * f["avg_daily_census"] * 7,
+    lpn_hours_per_week=f["lpn_hprd"] * f["avg_daily_census"] * 7,
+    employee_licensed_hours_per_week=f["licensed_nurse_hours_per_week"] - f["contract_licensed_hours_per_week"],
+    contract_licensed_hprd=f["contract_licensed_hours_per_week"] / (f["avg_daily_census"] * 7),
+)
 
 
 def describe_correlation(r: float) -> str:
@@ -175,6 +187,7 @@ with tab1:
         f"r = {r:.3f} ({describe_correlation(r)}). Values near 0 mean occupancy tells you little about "
         "staffing; a negative value means fuller facilities have fewer nurse hours per resident."
     )
+    st.caption(PBJ_SOURCE)
 
     st.markdown("**Correlation by state** (states with at least 20 facilities)")
     by_state = (
@@ -242,6 +255,150 @@ with tab2:
             "total_nursing_turnover_pct": st.column_config.NumberColumn("Nurse turnover %", format="%.1f"),
         },
     )
+    st.caption(PBJ_SOURCE + " Turnover: CMS Care Compare.")
+
+
+# --- Tab: nurse hours ------------------------------------------------------------
+
+with tab_hours:
+    st.subheader("Nurse staffing hours")
+    st.caption("Actual hours worked, from CMS Payroll-Based Journal (PBJ) daily payroll records. "
+               "Weekly figures are the quarter's daily hours averaged to a 7-day week.")
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("RN hours per week", f"{f['rn_hours_per_week'].sum():,.0f}")
+    c2.metric("LPN hours per week", f"{f['lpn_hours_per_week'].sum():,.0f}")
+    c3.metric("Licensed nurse FTE equivalents", f"{f['licensed_nurse_fte_equivalent'].sum():,.0f}",
+              help="Weekly RN + LPN hours ÷ 40. Full-time nurses' worth of hours, not a headcount.")
+    total_licensed = f["licensed_nurse_hours_per_week"].sum()
+    c4.metric("Worked by contract staff",
+              f"{f['contract_licensed_hours_per_week'].sum() / total_licensed:.1%}" if total_licensed else "n/a")
+
+    by_state_hours = (
+        f.groupby("state")[["employee_licensed_hours_per_week", "contract_licensed_hours_per_week"]]
+         .sum().reset_index()
+         .melt(id_vars="state", var_name="staff", value_name="hours")
+    )
+    by_state_hours["staff"] = by_state_hours["staff"].map({
+        "employee_licensed_hours_per_week": "Employee",
+        "contract_licensed_hours_per_week": "Contract / agency",
+    })
+    order = (by_state_hours.groupby("state")["hours"].sum().sort_values(ascending=False).index.tolist())
+    fig = px.bar(by_state_hours, x="state", y="hours", color="staff", category_orders={"state": order},
+                 color_discrete_map={"Employee": "#4C78A8", "Contract / agency": "#F58518"},
+                 labels={"hours": "RN + LPN hours per week", "state": "State", "staff": ""},
+                 title="Licensed nurse hours per week by state: employee vs. contract", height=420)
+    st.plotly_chart(fig, use_container_width=True)
+
+    by_type_hours = (
+        f.groupby(type_col)[["rn_hours_per_week", "lpn_hours_per_week"]].mean().reset_index()
+         .melt(id_vars=type_col, var_name="role", value_name="hours")
+    )
+    by_type_hours["role"] = by_type_hours["role"].map({"rn_hours_per_week": "RN", "lpn_hours_per_week": "LPN"})
+    fig2 = px.bar(by_type_hours, x=type_col, y="hours", color="role", barmode="group", text_auto=",.0f",
+                  labels={type_col: type_dimension, "hours": "Average hours per week per facility", "role": ""},
+                  title=f"Average weekly RN and LPN hours per facility, by {type_dimension.lower()}", height=380)
+    st.plotly_chart(fig2, use_container_width=True)
+
+    st.markdown("**Facility detail** (click a column header to sort)")
+    st.dataframe(
+        f[["provider_name", "state", type_col, "certified_beds", "avg_daily_census", "rn_hours_per_week",
+           "lpn_hours_per_week", "licensed_nurse_hours_per_week", "employee_licensed_hours_per_week",
+           "contract_licensed_hours_per_week", "licensed_nurse_fte_equivalent"]]
+         .sort_values("licensed_nurse_hours_per_week", ascending=False),
+        hide_index=True, use_container_width=True, height=420,
+        column_config={
+            "provider_name": "Facility",
+            "state": "State",
+            type_col: type_dimension,
+            "certified_beds": st.column_config.NumberColumn("Beds", format="%d"),
+            "avg_daily_census": st.column_config.NumberColumn("Avg residents", format="%.0f"),
+            "rn_hours_per_week": st.column_config.NumberColumn("RN hrs/week", format="%.0f"),
+            "lpn_hours_per_week": st.column_config.NumberColumn("LPN hrs/week", format="%.0f"),
+            "licensed_nurse_hours_per_week": st.column_config.NumberColumn("RN + LPN hrs/week", format="%.0f"),
+            "employee_licensed_hours_per_week": st.column_config.NumberColumn("Employee hrs/week", format="%.0f"),
+            "contract_licensed_hours_per_week": st.column_config.NumberColumn("Contract hrs/week", format="%.0f"),
+            "licensed_nurse_fte_equivalent": st.column_config.NumberColumn("FTE equivalents", format="%.1f"),
+        },
+    )
+    st.caption(PBJ_SOURCE)
+
+
+# --- Tab: strain vs turnover ---------------------------------------------------
+
+with tab_turnover:
+    st.subheader("Is nurse turnover higher where staffing is more strained?")
+    st.info(
+        "**What this compares:** overtime itself is not in public CMS data (hours are reported per facility, "
+        "not per nurse). This view uses the strain measures that are available, chiefly **reliance on agency "
+        "nurses**, and compares them with **nurse turnover** from Care Compare. Two cautions: turnover covers "
+        "Care Compare's 12-month reporting window, not exactly the PBJ quarter; and correlation does not show "
+        "direction. High turnover can *force* agency use as much as strain can cause turnover.",
+        icon="ℹ️",
+    )
+    STRAIN = {
+        "Contract share of licensed hours": "contract_licensed_share",
+        "Contract hours per resident day": "contract_licensed_hprd",
+        "Weekend staffing drop": "weekend_licensed_drop_pct",
+    }
+    TURNOVER = {"Total nursing staff turnover": "total_nursing_turnover_pct", "RN turnover": "rn_turnover_pct"}
+    c1, c2 = st.columns(2)
+    strain_label = c1.selectbox("Strain measure", list(STRAIN))
+    turnover_label = c2.selectbox("Turnover measure", list(TURNOVER))
+    x, y = STRAIN[strain_label], TURNOVER[turnover_label]
+
+    t = f[[x, y, "provider_name", "state", type_col]].dropna().copy()
+    # Care Compare reports turnover as percentage points (e.g. 45.2); scale if given as a fraction
+    if len(t) and t[y].max() <= 1.5:
+        t[y] = t[y] * 100
+
+    if len(t) < 10:
+        st.warning("Too few facilities in the current selection to compare. Select more states or clear the filter.")
+    else:
+
+        pearson = t[x].corr(t[y])
+        spearman = t[x].rank().corr(t[y].rank())  # Spearman = Pearson on ranks
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Facilities with both measures", f"{len(t):,}")
+        m2.metric("Rank correlation (Spearman)", f"{spearman:.3f}", describe_correlation(spearman), delta_color="off",
+                  help="Robust to skewed data and outliers; the primary measure here.")
+        m3.metric("Linear correlation (Pearson)", f"{pearson:.3f}", describe_correlation(pearson), delta_color="off")
+
+        # Bands give the plain-language answer: average turnover as strain increases
+        if x == "contract_licensed_share":
+            t["band"] = pd.cut(t[x], bins=[-0.001, 0, 0.05, 0.15, 1.0],
+                               labels=["None (0%)", "Low (<5%)", "Moderate (5-15%)", "High (15%+)"])
+        else:
+            t["band"] = pd.qcut(t[x].rank(method="first"), 5,
+                                labels=["Lowest 20%", "20-40%", "40-60%", "60-80%", "Highest 20%"])
+        bands = t.groupby("band", observed=True).agg(facilities=(y, "size"), avg_turnover=(y, "mean")).reset_index()
+        fig = px.bar(bands, x="band", y="avg_turnover", text_auto=".1f", hover_data=["facilities"],
+                     labels={"band": strain_label, "avg_turnover": f"Average {turnover_label.lower()} (%)"},
+                     title=f"Average {turnover_label.lower()} by level of {strain_label.lower()}", height=400)
+        st.plotly_chart(fig, use_container_width=True)
+        if len(bands) >= 2:
+            low, high = bands.iloc[0], bands.iloc[-1]
+            diff = high["avg_turnover"] - low["avg_turnover"]
+            st.markdown(
+                f"Facilities in the **{high['band']}** group average **{high['avg_turnover']:.1f}%** "
+                f"{turnover_label.lower()}, versus **{low['avg_turnover']:.1f}%** in the **{low['band']}** group: "
+                f"**{abs(diff):.1f} points {'higher' if diff > 0 else 'lower'}**."
+            )
+
+        by_type_band = (t.groupby([type_col, "band"], observed=True)[y].mean().reset_index())
+        fig2 = px.bar(by_type_band, x="band", y=y, color=type_col, barmode="group",
+                      labels={"band": strain_label, y: f"Average {turnover_label.lower()} (%)", type_col: type_dimension},
+                      title=f"Same comparison, split by {type_dimension.lower()}", height=380)
+        st.plotly_chart(fig2, use_container_width=True)
+
+        fig3 = px.scatter(t, x=x, y=y, color=type_col, opacity=0.35, render_mode="webgl",
+                          hover_name="provider_name", hover_data={"state": True},
+                          labels={x: strain_label, y: f"{turnover_label} (%)", type_col: type_dimension},
+                          title="Every facility", height=420)
+        if x != "contract_licensed_hprd":
+            fig3.update_xaxes(tickformat=".0%")
+        st.plotly_chart(fig3, use_container_width=True)
+        st.caption(PBJ_SOURCE + " Turnover: CMS Nursing Home Care Compare, October 2024.")
 
 
 # --- Tab 3: staffing by state and type -----------------------------------------
@@ -273,6 +430,7 @@ with tab3:
         st.caption("Blank cells: no valid facilities of that type in the state. "
                    "Averages count each facility once.")
 
+    st.caption(PBJ_SOURCE)
     st.download_button(
         "Download this table (CSV)",
         s[["state", "facility_type", "facility_count", avg_col, "avg_occupancy_rate"]].to_csv(index=False),
@@ -341,7 +499,7 @@ with tab5:
                                  name="Weekend", marker=dict(color="crimson", size=6)))
         fig.update_yaxes(tickformat=fmt)
         st.plotly_chart(fig, use_container_width=True)
-    st.caption("Red points are weekends. Licensed nurse HPRD typically dips on weekends.")
+    st.caption("Red points are weekends. Licensed nurse HPRD typically dips on weekends. " + PBJ_SOURCE)
 
 
 # --- Footer ----------------------------------------------------------------------
@@ -353,6 +511,8 @@ with st.expander("Definitions"):
   **Licensed nurses:** RN + LPN. **All nursing staff:** licensed nurses + CNAs, aides in training, and medication aides.
 - **Occupancy rate:** average daily residents ÷ certified beds.
 - **Contract hours:** hours worked by agency or contract staff rather than employees.
+- **Weekly hours:** the quarter's daily PBJ hours averaged to a 7-day week (HPRD × average residents × 7).
+- **Turnover:** Care Compare's nursing staff and RN turnover over its 12-month reporting period.
 - **Facility type:** ownership (for profit / nonprofit / government), provider type (Medicare / Medicaid / both),
   or setting (hospital-based / freestanding).
 - **Included facilities:** at least 60 reported days, occupancy 0-125%, total nurse HPRD 0.5-12

@@ -361,3 +361,20 @@ Supporting models: `dim_facility`, `dim_measure`, `fct_daily_staffing`, `fct_qua
 **Alternatives considered:** Estimating overtime as (average hours − 40) × headcount, which isn't possible without headcount and would hide per-person overtime even with it; presenting quality measures as length of stay.
 
 **Consequences:** Every number on the dashboard traces to a documented formula. The two questions the data can't answer directly are answered with clearly labeled proxies, and the gap is documented rather than hidden. Penalty, citation, ownership, and VBP staging models are built and tested but not yet used by marts; they're available for future dashboard pages.
+
+---
+
+## ADR-025: Nurse hours and strain-vs-turnover views
+
+**Status:** Implemented
+
+**Context:** Reviewers needed to see the PBJ staffing hours directly, not only as ratios. A fifth question was added: is nurse turnover higher where more overtime is required?
+
+**Decision:**
+- A *Nurse hours* tab shows weekly RN, LPN, employee, and contract hours by state, facility type, and facility. Weekly hours are HPRD × average daily residents × 7, which equals the quarter's PBJ hours averaged to a 7-day week. Every staffing chart is labeled with its PBJ source.
+- A *Strain vs. turnover* tab compares Care Compare nurse turnover (total nursing staff or RN) against three strain measures: contract share of licensed hours (the primary measure), contract hours per resident day, and weekend staffing drop. Overtime itself is not measurable (ADR-024).
+- The primary statistic is **Spearman rank correlation**, because contract share is heavily skewed, with most facilities near zero. Pearson is shown alongside. Turnover is also averaged within strain bands (none, under 5%, 5–15%, and 15%+ contract share; quintiles for the other measures) to give a plain-language answer, and is split by facility type.
+
+**Alternatives considered:** Presenting agency reliance as overtime; reporting Pearson correlation alone.
+
+**Consequences:** The answer is stated in terms the data supports. Two limitations are shown on the tab: Care Compare turnover covers a 12-month window that doesn't align exactly with the PBJ quarter, and correlation can't show direction, since high turnover can drive agency use as easily as the reverse.

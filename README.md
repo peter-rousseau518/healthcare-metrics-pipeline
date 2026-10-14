@@ -14,9 +14,12 @@ An end-to-end data pipeline that moves CMS nursing home data from Google Drive t
 | What is the relationship between nurse staffing levels and occupancy rates? | Almost none nationally: r = −0.08 between occupancy and licensed-nurse hours per resident day across 14,505 facilities. | Staffing vs. occupancy tab |
 | Which facilities have the highest nurse overtime hours? | Overtime can't be measured from public CMS data (no per-nurse hours or headcount). The dashboard ranks facilities by **contract (agency) RN + LPN hours**, the closest public signal, with weekend staffing drop and turnover alongside. | Agency nurse hours tab |
 | What are average staffing levels by state and facility type? | Averages for every state, with facility type defined three ways: ownership, provider type, and hospital-based vs. freestanding. | Staffing by state & type tab |
+| Is nurse turnover higher where more overtime is required? | Overtime isn't measurable, so turnover is compared against **reliance on agency nurses** and weekend staffing drop, using rank correlation and turnover averages by strain level. Direction of cause is not implied. | Strain vs. turnover tab |
 | What trends appear in patient length of stay over time? | Length of stay isn't in the data. The dashboard trends quality measures for **short-stay vs. long-stay** residents across four quarters, labeled as such. | Short- vs. long-stay tab |
 
-How each metric is calculated, and why the overtime and length-of-stay answers use labeled proxies, is documented in [ADR-024](docs/decisions.md).
+**All staffing figures come from the CMS Payroll-Based Journal (PBJ):** actual daily payroll hours for every RN, LPN, and nurse aide role, split into employee and contract (agency) hours, across 1.3 million facility-days. The dashboard's *Nurse hours* tab shows those hours directly; other tabs express them as hours per resident day. Care Compare supplies facility attributes, turnover, and quality measures.
+
+How each metric is calculated, and why the overtime and length-of-stay answers use labeled proxies, is documented in [ADR-024 and ADR-025](docs/decisions.md).
 
 ## Architecture
 
@@ -37,7 +40,7 @@ flowchart LR
 | Transformation | dbt | Version-controlled SQL with tests, documentation, and lineage ([ADR-012](docs/decisions.md)) |
 | Dashboard | Streamlit on Community Cloud | Code-based, deployed from this repo, viewable without a Snowflake login ([ADR-014](docs/decisions.md)) |
 
-Every tool choice, including the ones considered and rejected, is recorded in [`docs/decisions.md`](docs/decisions.md) (24 decision records). The layer-by-layer design is in [`docs/architecture.md`](docs/architecture.md).
+Every tool choice, including the ones considered and rejected, is recorded in [`docs/decisions.md`](docs/decisions.md) (25 decision records). The layer-by-layer design is in [`docs/architecture.md`](docs/architecture.md).
 
 ## Key results
 
@@ -87,8 +90,8 @@ To rebuild the pipeline from scratch, follow [`docs/setup.md`](docs/setup.md).
 
 ## Data sources
 
-- CMS Nursing Home Care Compare, October 2024 release, with FY 2024 SNF Value-Based Purchasing files
-- CMS Payroll-Based Journal daily nurse staffing, Q2 2024
+- **CMS Payroll-Based Journal (PBJ) daily nurse staffing, Q2 2024:** hours worked each day by every nursing role, employee vs. contract, plus daily resident census. Source of all staffing and occupancy figures.
+- **CMS Nursing Home Care Compare, October 2024 release**, with FY 2024 SNF Value-Based Purchasing files: facility attributes, ownership, star ratings, nurse turnover, inspections, penalties, and quality measures.
 
 Both are public datasets published by the Centers for Medicare & Medicaid Services on data.cms.gov.
 

@@ -28,11 +28,15 @@ The national total of 3.84 hours per resident day matches CMS's published nation
 
 Because the distribution is so skewed, a ranking communicates this better than an average. This is the dashboard's answer to the overtime question; why overtime itself can't be measured is explained in ADR-024.
 
-## 3. Staffing by state and facility type
+## 3. Nurse turnover vs. staffing strain
+
+Compared in the dashboard's *Strain vs. turnover* tab, which reports the rank correlation and average turnover by level of agency-nurse reliance (ADR-025).
+
+## 4. Staffing by state and facility type
 
 Averages for every state and facility type are in the dashboard's *Staffing by state & type* tab, with a CSV download.
 
-## 4. Short-stay vs. long-stay trends
+## 5. Short-stay vs. long-stay trends
 
 Quarterly trends for short-stay and long-stay quality measures are in the dashboard's *Short- vs. long-stay trends* tab. These measure resident outcomes, not length of stay, which isn't in the source data.
 
