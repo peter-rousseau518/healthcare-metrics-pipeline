@@ -193,3 +193,20 @@ models:
         description: "Direct-care LPN hours that day (employee plus contract). Excludes LPN admin hours."
       - name: lpn_ctr_hours
         description: "Direct-care LPN hours worked by contract or agency staff."
+
+  - name: stg_nh_data_collection_intervals
+    description: "Data collection period for each CMS measure in the release: one row per measure."
+    columns:
+      - name: measure_code
+        description: "CMS measure code. Text, because codes have leading zeros (e.g. 004)."
+        data_tests:
+          - unique
+          - not_null
+      - name: data_collection_period_from_date
+        description: "Start of the period the measure's data was collected."
+        data_tests:
+          - not_null
+      - name: data_collection_period_through_date
+        description: "End of the period the measure's data was collected."
+        data_tests:
+          - not_null
