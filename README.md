@@ -11,7 +11,7 @@ An end-to-end data pipeline that moves CMS nursing home data from Google Drive t
 
 | Question | Answer in the data | Where |
 |---|---|---|
-| What is the relationship between nurse staffing levels and occupancy rates? | Almost none nationally: r = −0.08 between occupancy and licensed-nurse hours per resident day across 14,505 facilities. | Staffing vs. occupancy tab |
+| What is the relationship between nurse staffing levels and occupancy rates? | Almost none nationally: r = −0.08 between occupancy and licensed-nurse hours per day across 14,505 facilities. | Staffing vs. occupancy tab |
 | Which facilities have the highest nurse overtime hours? | Overtime can't be measured from public CMS data (no per-nurse hours or headcount). The dashboard ranks facilities by **contract (agency) RN + LPN hours**, the closest public signal, with weekend staffing drop and turnover alongside. | Agency nurse hours tab |
 | What are average staffing levels by state and facility type? | Averages for every state, with facility type defined three ways: ownership, provider type, and hospital-based vs. freestanding. | Staffing by state & type tab |
 | Is nurse turnover higher where more overtime is required? | Overtime isn't measurable, so turnover is compared against **reliance on agency nurses** and weekend staffing drop, using rank correlation and turnover averages by strain level. Direction of cause is not implied. | Strain vs. turnover tab |
