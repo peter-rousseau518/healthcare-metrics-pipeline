@@ -160,7 +160,7 @@ This log records the significant design decisions in the Healthcare Metrics Pipe
 
 ## ADR-012: dbt for transformations
 
-**Status:** In progress
+**Status:** Implemented
 
 **Context:** Transformations need to be version-controlled, tested, and documented.
 
@@ -330,3 +330,34 @@ This log records the significant design decisions in the Healthcare Metrics Pipe
 **Alternatives considered:** Using only Care Compare's quarterly averages (no daily detail, no contract split); adding the file to the Drive folder (no write access).
 
 **Consequences:** Staffing metrics rest on actual daily hours, occupancy can be trended across the quarter, and contract-nurse reliance becomes measurable. PBJ reports hours per facility per day, not per nurse, so true overtime (hours over 40 per person per week) still can't be calculated; the dashboard labels its staffing-strain ranking accordingly. The local upload is a manual step, documented in `setup.md`.
+
+---
+
+## ADR-024: Mart design and metric definitions for the dashboard questions
+
+**Status:** Implemented
+
+**Context:** The dashboard must answer four questions: (1) the relationship between nurse staffing and occupancy; (2) which facilities have the highest nurse overtime; (3) average staffing by state and facility type; (4) trends in length of stay over time. The data is nursing home (skilled nursing facility) data, so "hospital" in the questions maps to "facility."
+
+**Decision:** Build marts that each answer one question, on shared, explicit definitions:
+
+- **Staffing level** is hours per resident day (HPRD), computed as total hours ÷ total resident-days, the CMS method, rather than an average of daily ratios. **RN** includes the director of nursing, RN admin, and direct-care RN hours; **LPN** includes LPN admin and direct-care LPN; **licensed nurse** is RN + LPN; **nurse aide** is CNA, aide in training, and medication aide.
+- **Occupancy rate** is average daily census ÷ certified beds.
+- **Facility type** is offered three ways: ownership group (for profit / nonprofit / government), provider type (Medicare / Medicaid / both), and setting (hospital-based / freestanding).
+- **Overtime** can't be computed. Overtime means hours over 40 per person per week, and PBJ reports hours per facility per day with no headcount. The ranking uses **contract (agency) licensed-nurse hours per week**, the closest public signal of hours a facility's own staff couldn't cover, shown alongside the weekend staffing drop and turnover, and labeled as a staffing-strain proxy. FTE equivalents (weekly hours ÷ 40) are reported as context, not as headcount.
+- **Length of stay** is not in the data. The closest available answer trends MDS quality measure scores for **short-stay vs. long-stay residents** across the four quarters of the measure period, labeled as such.
+- **Valid for analysis:** at least 60 reported days, occupancy between 0 and 125%, and total nurse HPRD between 0.5 and 12. This excludes partial reporters and implausible values from averages, correlations, and rankings.
+
+| Question | Mart |
+|---|---|
+| Staffing vs. occupancy | `mart_staffing_occupancy_correlation` (plus facility-level points in `mart_facility_staffing`) |
+| Overtime | `mart_facility_staffing.contract_licensed_hours_rank` |
+| Staffing by state and type | `mart_staffing_by_state_and_type` |
+| Length-of-stay trend | `mart_stay_type_quality_trend` |
+| Daily trends | `mart_daily_staffing_trend` |
+
+Supporting models: `dim_facility`, `dim_measure`, `fct_daily_staffing`, `fct_quality_measure_quarters`.
+
+**Alternatives considered:** Estimating overtime as (average hours − 40) × headcount, which isn't possible without headcount and would hide per-person overtime even with it; presenting quality measures as length of stay.
+
+**Consequences:** Every number on the dashboard traces to a documented formula. The two questions the data can't answer directly are answered with clearly labeled proxies, and the gap is documented rather than hidden. Penalty, citation, ownership, and VBP staging models are built and tested but not yet used by marts; they're available for future dashboard pages.

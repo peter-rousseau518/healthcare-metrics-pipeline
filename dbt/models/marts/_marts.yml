@@ -1,0 +1,130 @@
+version: 2
+
+models:
+  - name: dim_facility
+    description: "One row per nursing home in the latest Care Compare release, with the three facility-type groupings used by the dashboard."
+    columns:
+      - name: ccn
+        description: "CMS Certification Number, the facility key."
+        data_tests: [unique, not_null]
+      - name: ownership_group
+        description: "For profit, Nonprofit, Government, or Other, derived from ownership_type."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['For profit', 'Nonprofit', 'Government', 'Other']
+      - name: provider_type
+        description: "Medicare, Medicaid, or both."
+      - name: facility_setting
+        description: "Hospital-based (the facility is inside a hospital) or Freestanding."
+      - name: is_chain_affiliated
+        description: "True when the facility belongs to an affiliated entity (chain)."
+      - name: care_compare_occupancy_rate
+        description: "Care Compare average residents per day / certified beds (quarterly average, for reference)."
+
+  - name: fct_daily_staffing
+    description: "One row per facility per day from PBJ, with nurse hours grouped into RN, LPN, and nurse aide, plus daily occupancy."
+    columns:
+      - name: facility_day_key
+        description: "ccn plus work date; the grain."
+        data_tests: [unique, not_null]
+      - name: ccn
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_facility')
+                field: ccn
+      - name: occupancy_rate
+        description: "Daily resident census / certified beds."
+      - name: rn_hours
+        description: "RN hours: director of nursing + RN admin + direct-care RN, employee and contract."
+      - name: lpn_hours
+        description: "LPN hours: LPN admin + direct-care LPN, employee and contract."
+      - name: licensed_nurse_hours
+        description: "RN plus LPN hours."
+      - name: licensed_nurse_contract_hours
+        description: "RN plus LPN hours worked by contract or agency staff."
+      - name: total_nurse_hours
+        description: "RN plus LPN plus nurse aide hours."
+
+  - name: mart_facility_staffing
+    description: >
+      One row per facility per quarter. Staffing levels (hours per resident
+      day), occupancy, and staffing-strain measures, with the ranking used for
+      the overtime question. See ADR-024 for definitions.
+    columns:
+      - name: facility_quarter_key
+        data_tests: [unique, not_null]
+      - name: occupancy_rate
+        description: "Average daily census / certified beds."
+      - name: licensed_nurse_hprd
+        description: "RN plus LPN hours per resident day: total hours / total resident-days."
+      - name: total_nurse_hprd
+        description: "RN plus LPN plus nurse aide hours per resident day."
+      - name: licensed_nurse_fte_equivalent
+        description: "Average weekly RN plus LPN hours / 40: full-time nurses' worth of hours. Not a headcount."
+      - name: contract_licensed_hours_per_week
+        description: "Average weekly RN plus LPN hours worked by contract or agency staff. Basis of the overtime-proxy ranking."
+      - name: contract_licensed_share
+        description: "Share of RN plus LPN hours worked by contract or agency staff."
+      - name: weekend_licensed_drop_pct
+        description: "How much lower weekend RN plus LPN hours per resident day are than weekday. 0.20 = 20% lower on weekends."
+      - name: is_valid_for_analysis
+        description: "At least 60 reported days, occupancy between 0 and 125%, and total nurse HPRD between 0.5 and 12."
+      - name: contract_licensed_hours_rank
+        description: "Rank by contract_licensed_hours_per_week among valid facilities in the quarter (1 = most). NULL when not valid."
+
+  - name: mart_staffing_occupancy_correlation
+    description: "Correlation between occupancy rate and nurse staffing per resident day, nationally and by state. Answers dashboard question 1."
+    columns:
+      - name: correlation_key
+        data_tests: [unique, not_null]
+      - name: corr_occupancy_licensed_hprd
+        description: "Pearson correlation between occupancy and RN plus LPN hours per resident day."
+
+  - name: mart_staffing_by_state_and_type
+    description: "Average staffing by state and facility type, with facility type defined three ways. Answers dashboard question 3."
+    columns:
+      - name: state_type_key
+        data_tests: [unique, not_null]
+      - name: facility_type_dimension
+        description: "Which definition of facility type the row uses: Ownership type, Provider type, or Facility setting."
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['Ownership type', 'Provider type', 'Facility setting']
+
+  - name: mart_daily_staffing_trend
+    description: "Daily occupancy and staffing across the quarter, nationally and by state."
+    columns:
+      - name: date_state_key
+        data_tests: [unique, not_null]
+
+  - name: dim_measure
+    description: "One row per CMS quality measure (MDS and claims), with short-stay or long-stay resident type."
+    columns:
+      - name: measure_code
+        data_tests: [unique, not_null]
+      - name: resident_type
+        description: "Short Stay or Long Stay."
+
+  - name: fct_quality_measure_quarters
+    description: "MDS quality measure scores, one row per facility, measure, and quarter of the measure period."
+    columns:
+      - name: facility_measure_quarter_key
+        data_tests: [unique, not_null]
+      - name: measure_code
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('dim_measure')
+                field: measure_code
+
+  - name: mart_stay_type_quality_trend
+    description: >
+      National quality measure scores for short-stay vs long-stay residents
+      across four quarters. The closest available answer to the length-of-stay
+      question; the data has no length-of-stay field (ADR-024).
+    columns:
+      - name: measure_quarter_key
+        data_tests: [unique, not_null]
