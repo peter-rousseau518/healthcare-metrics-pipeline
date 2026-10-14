@@ -10,11 +10,11 @@ This log records the significant design decisions in the Healthcare Metrics Pipe
 
 **Context:** The source data is 17+ CMS Nursing Home Care Compare CSV files with inconsistent conventions: placeholder values, footnote columns, and mixed-meaning nulls. Analysts need clean, modeled data; engineers need to be able to trace and replay every transformation.
 
-**Decision:** Separate the warehouse into three schemas: `raw` (data exactly as received), `staging` (cleaned, typed, renamed), and `marts` (business-ready star schema).
+**Decision:** Separate the warehouse into three schemas (commonly known as 'Medallion Architecture'): `raw` (data exactly as received), `staging` (cleaned, typed, renamed), and `marts` (business-ready star schema).
 
 **Alternatives considered:** Loading directly into cleaned tables; a single schema with naming prefixes.
 
-**Consequences:** Every transformation is reproducible from raw. Permissions can be granted per layer, so the dashboard can read `marts` only. This adds storage and model count, which is negligible at this data volume.
+**Consequences:** Every transformation is reproducible from raw. This allows for data tracing activities in the event of a question or error.  Permissions can be granted per layer, so the dashboard can read `marts` only. This adds storage and model count, which is negligible at this data volume.
 
 ---
 
@@ -70,7 +70,7 @@ This log records the significant design decisions in the Healthcare Metrics Pipe
 
 **Alternatives considered:** A single identity with full bucket access.
 
-**Consequences:** A leaked ingestion key cannot read or delete data, and Snowflake cannot alter raw files. This was verified by a test in which `cms-ingest` uploaded successfully and was denied `DeleteObject`.
+**Consequences:** A leaked ingestion key cannot read or delete data, and Snowflake cannot alter raw files, only read and extract. This was verified by a test in which `cms-ingest` uploaded successfully and was denied `DeleteObject`.
 
 ---
 
@@ -140,7 +140,7 @@ This log records the significant design decisions in the Healthcare Metrics Pipe
 
 **Alternatives considered:** Snowpipe auto-ingest via S3 event notifications.
 
-**Consequences:** Simpler setup with no event plumbing. Snowpipe would add continuous-ingest capability that a monthly source doesn't need. COPY INTO's load history also prevents duplicate loads of the same file.
+**Consequences:** Simpler setup with no event plumbing. Snowpipe would add continuous-ingest capability typically reserved for live data that a monthly source doesn't need. COPY INTO's load history also prevents duplicate loads of the same file.
 
 ---
 
@@ -180,7 +180,7 @@ This log records the significant design decisions in the Healthcare Metrics Pipe
 
 **Decision:** Run the pipeline with a single Python runner, optionally scheduled with GitHub Actions.
 
-**Alternatives considered:** Apache Airflow, Dagster.
+**Alternatives considered:** Apache Airflow.
 
 **Consequences:** No orchestration infrastructure to maintain. Airflow is the documented path to scale up if the pipeline gains more sources or dependencies.
 
@@ -224,7 +224,7 @@ This log records the significant design decisions in the Healthcare Metrics Pipe
 
 **Alternatives considered:** Terraform or CloudFormation.
 
-**Consequences:** Fast to set up for a single-environment project, with the exact permissions still documented in the repo. Terraform is the next step if the pipeline needs multiple environments or repeatable teardown and rebuild.
+**Consequences:** Fast to set up for a single-environment project, with the exact permissions still documented in the repo. 
 
 ---
 
