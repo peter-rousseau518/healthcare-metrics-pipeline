@@ -290,7 +290,7 @@ This log records the significant design decisions in the Healthcare Metrics Pipe
 
 **Context:** All 20 source files are loaded into raw. Staging and modeling every one would more than double the transformation work, and many tables (survey dates, COVID files, the QRP files, swing-bed data) don't feed the planned analysis.
 
-**Decision:** Build staging and mart models for 8 tables: provider info, penalties, health citations, citation descriptions, ownership, MDS quality measures, claims quality measures, and SNF VBP facility performance. The other 12 remain in raw, documented as sources and available for future work.
+**Decision:** Build staging and mart models for 8 Care Compare tables: provider info, penalties, health citations, citation descriptions, ownership, MDS quality measures, claims quality measures, and SNF VBP facility performance, plus the PBJ daily staffing file added later (ADR-023). The other 12 Care Compare tables remain in raw, documented as sources and available for future work.
 
 **Alternatives considered:** Staging all 20 tables up front.
 
@@ -316,3 +316,17 @@ This log records the significant design decisions in the Healthcare Metrics Pipe
 **Alternatives considered:** Strict casts (`TO_NUMBER`), which fail the whole build on one bad value; keeping all releases in staging.
 
 **Consequences:** Builds are resilient to unexpected values. That resilience could hide data loss, so key columns carry dbt tests, and a reconciliation check compares non-null counts between raw and staging after each cast.
+
+---
+
+## ADR-023: Add CMS Payroll-Based Journal daily staffing as a second source
+
+**Status:** Implemented
+
+**Context:** The dashboard must answer staffing questions: staffing vs. occupancy, nurse "overtime," and staffing by state and facility type. Care Compare provides only quarterly averages of hours per resident per day. The CMS Payroll-Based Journal (PBJ) daily nurse staffing file reports actual hours each day for every nursing role, split into employee and contract (agency) hours, along with the daily resident census.
+
+**Decision:** Ingest `PBJ_Daily_Nurse_Staffing_Q2_2024.csv` (1,325,324 rows, about 209 MB). It isn't in the shared Drive folder, so it is uploaded from a local download with the same `cms-ingest` identity, to `cms_nursing_home/pbj/quarter=YYYYQn/`. A separate file format uses ISO-8859-1 encoding, which PBJ files commonly use and which also reads plain ASCII correctly. Unlike Care Compare models, PBJ staging keeps every loaded quarter, because PBJ is a daily time series. PBJ's `PROVNUM` is left-padded to six characters so it joins on CCN.
+
+**Alternatives considered:** Using only Care Compare's quarterly averages (no daily detail, no contract split); adding the file to the Drive folder (no write access).
+
+**Consequences:** Staffing metrics rest on actual daily hours, occupancy can be trended across the quarter, and contract-nurse reliance becomes measurable. PBJ reports hours per facility per day, not per nurse, so true overtime (hours over 40 per person per week) still can't be calculated; the dashboard labels its staffing-strain ranking accordingly. The local upload is a manual step, documented in `setup.md`.

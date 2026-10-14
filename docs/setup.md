@@ -225,6 +225,21 @@ cms_nursing_home:
 
 From the `dbt` folder, `dbt debug` should end with "All checks passed!"
 
+## 16. Ingest the PBJ daily staffing file
+
+The PBJ file is downloaded from CMS separately rather than copied from the shared Drive folder. Upload it with the ingestion profile:
+
+```bash
+aws s3 cp ~/Downloads/PBJ_Daily_Nurse_Staffing_Q2_2024.csv \
+  "s3://peter-cms-nursing-home-2026/cms_nursing_home/pbj/quarter=2024Q2/" --profile cms-ingest
+```
+
+Then run `snowflake/05_pbj_raw.sql` with **Run All**. It should report 1,325,324 rows. Build the staging model from the `dbt` folder:
+
+```bash
+dbt build --select stg_pbj_daily_nurse_staffing
+```
+
 ## Local profiling environment
 
 ```bash

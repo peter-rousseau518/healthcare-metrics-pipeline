@@ -157,3 +157,39 @@ models:
         description: "VBP performance score, the higher of achievement and improvement scores."
       - name: incentive_payment_multiplier
         description: "Multiplier applied to the facility's Medicare payments under VBP."
+
+  - name: stg_pbj_daily_nurse_staffing
+    description: >
+      CMS Payroll-Based Journal daily nurse staffing. One row per facility per
+      day, with hours by nursing role split into employee and contract (agency)
+      hours, plus the daily resident census. Keeps every loaded quarter.
+    columns:
+      - name: facility_day_key
+        description: "ccn plus work date; the grain of this model."
+        data_tests:
+          - unique
+          - not_null
+      - name: ccn
+        description: "Facility identifier, left-padded to 6 characters; joins to stg_nh_provider_info. Facilities that closed after the PBJ quarter will not match."
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_nh_provider_info')
+                field: ccn
+              config:
+                severity: warn
+      - name: work_date
+        description: "Calendar date the hours were worked."
+        data_tests:
+          - not_null
+      - name: resident_census
+        description: "Residents in the facility that day, from MDS assessments."
+      - name: rn_hours
+        description: "Direct-care RN hours that day (employee plus contract). Excludes RN director of nursing and RN admin hours."
+      - name: rn_ctr_hours
+        description: "Direct-care RN hours worked by contract or agency staff."
+      - name: lpn_hours
+        description: "Direct-care LPN hours that day (employee plus contract). Excludes LPN admin hours."
+      - name: lpn_ctr_hours
+        description: "Direct-care LPN hours worked by contract or agency staff."

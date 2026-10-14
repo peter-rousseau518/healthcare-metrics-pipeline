@@ -49,3 +49,5 @@ sources:
         description: "SNF Quality Reporting Program national values."
       - name: swing_bed_snf
         description: "Swing-bed SNF measures for hospitals providing skilled nursing care."
+      - name: pbj_daily_nurse_staffing
+        description: "CMS Payroll-Based Journal daily nurse staffing: hours by nursing role (employee and contract) and resident census, one row per facility per day. Published quarterly; loaded by snowflake/05_pbj_raw.sql."
